@@ -24,7 +24,7 @@ const components = {
         // HelloWorld.html - is the html file that contains the component html
     },
 
-    styles: {}, //Leave empty
+    styles: {}, // Leave empty
     scripts: {},
 
     parse: async function (componentName) {
@@ -35,11 +35,14 @@ const components = {
             let componentPath = this.list[componentName].src
 
             console.log("Parsing", componentPath);
+            // Fetch the component
             let componentData = await fetch(this._ + componentPath)
             let componentText = await componentData.text()
 
+            // For every same component tag apply the fetched data
             for (const x of document.querySelectorAll(componentName)) {
 
+                // Generate a component id and create a object
                 while (true) {
                     let generatedId = Math.round(Math.random() * 1000)
                     if (!exportData._.includes(generatedId)) {
@@ -49,80 +52,77 @@ const components = {
                             updateElements: function () {
                                 this.elements.forEach(x => {
                                     console.log(x, this);
-                                    x.element.innerHTML = exportData.run(this._id, '`' + x.markup + '`');
+                                    x.getElement().innerHTML = exportData.run(this._id, '`' + x.markup + '`');
                                 })
                             }
                         };
                         break;
                     }
                 }
+                // Add the fetched data to the tag
+                x.innerHTML += componentText
 
-                x.innerHTML = componentText
-                for (let i = 0; isDefined(document.body.querySelector("script[local]")) && i < 5; i++) {
-                    document.querySelectorAll("script[local]").forEach(x => {
-                        eval(x.innerHTML);
-                        x.remove();
-                    })
-                }
+                // Run all script tags and remove them
+                document.querySelectorAll("script[local]").forEach(x => {
+                    eval(x.innerHTML);
+                    x.remove();
+                })
 
+                // Parse the import data
                 await this.import()
 
+                // Get the last added component id A.K.A. this components id
                 lastId = exportData._.slice(-1);
-                let parsedComponentText = "";
+
+                // Add a class name referencing the component object and parse the markup
+                let i = 0;
                 for (const element of x.querySelectorAll('*')) {
                     element.classList.add(componentName + '-' + lastId)
                     parsedMarkup = element.innerHTML.replaceAll('{{', '${').replaceAll("}}", "}")
                     element.innerHTML = exportData.run(lastId, '`' + parsedMarkup + '`')
-                    element.setAttribute('___markup', parsedMarkup)
-                    // parsedComponentText += element.outerHTML
-                    console.log(element);
-                }
-
-                // let parsedComponentText = x.innerHTML;
-                // parsedComponentText = parsedComponentText.replaceAll('{{', '${').replaceAll("}}", "}");
-
-                // x.outerHTML = exportData.run(lastId, '`' + parsedComponentText + '`');
-                for (const element of document.querySelectorAll(`.${componentName}-${lastId}`)) {
-                    console.log(element.getAttribute('___markup'));
-                    markup = element.getAttribute('___markup')
-                    element.removeAttribute('___markup')
-                    exportData[lastId].elements.push({ element: element, markup: markup });
-                }
-                for (const x of document.querySelectorAll("*[--click]")) {
-                    console.log('ca');
-                    let clickAction = x.getAttribute('--click');
-                    x.removeAttribute('--click');
-                    if (isDefined(clickAction)) {
-                        let lastId = exportData._.slice(-1);
-                        x.addEventListener("click", e => {
-                            console.log('click');
-                            exportData.run(lastId, clickAction);
-                        })
+                    const idAttribute = `${componentName}-${lastId}-${i++}`
+                    const elementObj = {
+                        getElement: function () { console.log(this._id); return document.querySelector(`[___id="${this._id}"]`) }, _id: idAttribute, markup: parsedMarkup
                     }
+                    element.setAttribute('___id', idAttribute)
+                    exportData[lastId].elements.push(elementObj);
+                }
+                //Overwrite the component initializer with the component.
+            }
+
+            for (const x of document.querySelectorAll("*[--click]")) {
+                console.log('ca');
+                let clickAction = x.getAttribute('--click');
+                x.removeAttribute('--click');
+                if (isDefined(clickAction)) {
+                    let lastId = exportData._.slice(-1);
+                    x.addEventListener("click", e => {
+                        console.log('click');
+                        exportData.run(lastId, clickAction);
+                    })
                 }
             }
 
         } else throw `There is no entry for ${componentName} in the component list`
     },
 
+    //Run parser for each component
     run: async function () {
         for (const component of Object.keys(this.list)) {
             let componentName = component
-            await this.parse(componentName) // Await so that the components load before we parse the import tags
+            await this.parse(componentName)
         }
     },
 
 
-
-    import: async function (callback) {
+    //Parse the import tags and import the specified things...
+    import: async function () {
         return new Promise(async (resolve) => {
             for (const x of document.querySelectorAll('import')) {
                 let type = x.getAttribute('type').trim()
                 let src = x.getAttribute('src').trim()
                 switch (type) {
-
-
-
+                    //Simple checks and add a link element to the <head>
                     case "css":
                         const force = isDefined(x.getAttribute('force'));
                         const fixed = isDefined(x.getAttribute('fixed'));
@@ -135,7 +135,9 @@ const components = {
                             this.styles[src] = { fixed: fixed };
                         }
                         break;
+                    //Parse the imported components
                     case "components":
+                    case "component":
                         let componentsList = src.split(" ");
                         for (let componentName of componentsList) {
                             console.log("Component Import ", componentName);
@@ -143,8 +145,8 @@ const components = {
                             await this.parse(componentName);
                         }
                         break;
+                    //Fetch javascript and execute it 
                     case "js":
-                        // const jsLink = document.querySelector('html').querySelector(`[href='${src}']`)
                         if (!isDefined(this.scripts[src])) {
                             let jsText = await fetch(src);
                             jsText = await jsText.text();
@@ -152,14 +154,12 @@ const components = {
                             await eval(await jsText);
                         } else
                             eval(this.scripts[src].text)
-                        // document.querySelector('head').insertAdjacentHTML('beforeend', `<link type="text/css" rel="stylesheet" href=${src}>`)
                         break;
                     default:
                         break;
                 }
                 x.remove()
             }
-            // await jsText
             resolve(true)
         });
     },
@@ -170,9 +170,11 @@ router = {
     setView: async function (name) {
         if (isDefined(views.list[name])) {
 
+            //Fetch the view html
             let viewData = await fetch(views._ + views.list[name].src);
             document.querySelector("body").innerHTML = await viewData.text()
 
+            //Create the export data object
             exportData = {
                 _: [],
                 run: function (id, code) {
@@ -182,7 +184,7 @@ router = {
 
                 },
             }
-
+            //Remove all the unfixed styles from <head>
             Object.entries(components.styles).forEach(x => {
                 if (!x[1].fixed) {
                     delete components.styles[x[0]]
@@ -197,6 +199,7 @@ router = {
     },
 }
 
+//Parses a component js export object 
 function exportLocal(obj) {
     let lastId = exportData._.slice(-1)
     exportData[lastId].data = obj
@@ -217,6 +220,3 @@ let isDefined = el => {
 window.onload = async (event) => {
     router.setView(views.startingView)
 }
-
-obj = { a: 1 }
-window.watch

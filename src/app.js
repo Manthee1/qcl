@@ -2,12 +2,13 @@
 
 
 const views = {
-    startingView: "GoodbyeWorldView",
+    startingView: "Test",
     _: "./src/views/", //root path to the views directory
 
     list: {
         GoodbyeWorldView: { src: "GoodbyeWorldView.html" },
         HelloWorldView: { src: "HelloWorldView.html" },
+        Test: { src: "Test.html" },
         //Same as for components.
         //You can call router.setView(nameOfTheViewDefinedInThisList) and change the view.
     }
@@ -28,7 +29,8 @@ const components = {
     scripts: {},
 
     parse: async function (componentName) {
-        if (!isDefined(document.querySelector(componentName))) {
+        const componentSelector = componentName + ":not([___parsing])";
+        if (!isDefined(document.querySelector(componentSelector))) {
             return true
         }
         if (isDefined(this.list[componentName])) {
@@ -40,18 +42,20 @@ const components = {
             let componentText = await componentData.text()
 
             // For every same component tag apply the fetched data
-            for (const x of document.querySelectorAll(componentName)) {
-
+            for (const x of document.querySelectorAll(componentSelector)) {
+                x.setAttribute('___parsing', true);
                 // Generate a component id and create a object
+                let generatedId = null;
                 while (true) {
-                    let generatedId = Math.round(Math.random() * 1000)
+                    generatedId = Math.round(Math.random() * 1000)
                     if (!exportData._.includes(generatedId)) {
                         exportData._.push(generatedId);
                         exportData[generatedId] = {
                             _id: generatedId, componentName: componentName, elements: [], data: {},
                             updateElements: function () {
+                                console.log(this._id, '`' + x.markup + '`');
                                 this.elements.forEach(x => {
-                                    console.log(x, this);
+                                    console.log(x, x.getElement());
                                     x.getElement().innerHTML = exportData.run(this._id, '`' + x.markup + '`');
                                 })
                             }
@@ -59,6 +63,7 @@ const components = {
                         break;
                     }
                 }
+
                 // Add the fetched data to the tag
                 x.innerHTML += componentText
 
@@ -69,36 +74,45 @@ const components = {
                 })
 
                 // Parse the import data
-                await this.import()
+                await this.import('css')
+                await this.import('js')
 
-                // Get the last added component id A.K.A. this components id
-                lastId = exportData._.slice(-1);
-
-                // Add a class name referencing the component object and parse the markup
-                let i = 0;
-                for (const element of x.querySelectorAll('*')) {
-                    element.classList.add(componentName + '-' + lastId)
-                    parsedMarkup = element.innerHTML.replaceAll('{{', '${').replaceAll("}}", "}")
-                    element.innerHTML = exportData.run(lastId, '`' + parsedMarkup + '`')
-                    const idAttribute = `${componentName}-${lastId}-${i++}`
-                    const elementObj = {
-                        getElement: function () { console.log(this._id); return document.querySelector(`[___id="${this._id}"]`) }, _id: idAttribute, markup: parsedMarkup
-                    }
-                    element.setAttribute('___id', idAttribute)
-                    exportData[lastId].elements.push(elementObj);
+                //Mark elements that are components with the '___component' attribute
+                for (const element of x.querySelectorAll("import[type='components']")) {
+                    componentsArray = element.getAttribute('src').split(' ')
+                    componentsArray.forEach(componentName => x.querySelectorAll(componentName).forEach(component => component.setAttribute('___component', true)))
                 }
+
+                let i = 0;
+                // Add a class name referencing the component object and parse the markup
+                for (const element of x.querySelectorAll("*:not(import):not([___component])")) {
+                    element.classList.add(componentName + '-' + generatedId)
+                    parsedMarkup = element.innerHTML.replaceAll('{{', '${').replaceAll("}}", "}")
+                    element.innerHTML = exportData.run(generatedId, '`' + parsedMarkup + '`')
+                    const idAttribute = `${componentName}-${generatedId}-${i++}`
+                    const elementObj = {
+                        getElement: function () { return document.querySelector(`[___id="${this._id}"]`) }, _id: idAttribute, markup: parsedMarkup
+                    }
+                    if (!element.hasAttribute("___id")) {
+                        element.setAttribute('___id', idAttribute)
+                        element.setAttribute('___component-id', generatedId)
+                    }
+                    exportData[generatedId].elements.push(elementObj);
+                }
+
                 //Overwrite the component initializer with the component.
+                x.outerHTML = x.innerHTML;
+
+                await this.import('components')
             }
 
             for (const x of document.querySelectorAll("*[--click]")) {
-                console.log('ca');
                 let clickAction = x.getAttribute('--click');
                 x.removeAttribute('--click');
                 if (isDefined(clickAction)) {
-                    let lastId = exportData._.slice(-1);
+                    let componentId = x.getAttribute('___component-id')
                     x.addEventListener("click", e => {
-                        console.log('click');
-                        exportData.run(lastId, clickAction);
+                        exportData.run(componentId, clickAction);
                     })
                 }
             }
@@ -110,15 +124,17 @@ const components = {
     run: async function () {
         for (const component of Object.keys(this.list)) {
             let componentName = component
-            await this.parse(componentName)
+            this.parse(componentName)
         }
     },
 
 
     //Parse the import tags and import the specified things...
-    import: async function () {
+    import: async function (typeToImport = "") {
+        typeToImport = typeToImport || "";
         return new Promise(async (resolve) => {
-            for (const x of document.querySelectorAll('import')) {
+            let elements = typeToImport == "" ? document.querySelectorAll(`import`) : document.querySelectorAll(`import[type='${typeToImport}']`)
+            for (const x of elements) {
                 let type = x.getAttribute('type').trim()
                 let src = x.getAttribute('src').trim()
                 switch (type) {
@@ -137,7 +153,6 @@ const components = {
                         break;
                     //Parse the imported components
                     case "components":
-                    case "component":
                         let componentsList = src.split(" ");
                         for (let componentName of componentsList) {
                             console.log("Component Import ", componentName);
@@ -178,10 +193,8 @@ router = {
             exportData = {
                 _: [],
                 run: function (id, code) {
-
                     this[id].data.run = function () { return eval(code) };
-                    return this[id].data.run()
-
+                    return this[id].data.run();
                 },
             }
             //Remove all the unfixed styles from <head>
@@ -205,7 +218,7 @@ function exportLocal(obj) {
     exportData[lastId].data = obj
     Object.keys(obj.data).forEach(x => {
         Object.defineProperty(exportData[lastId].data, x, {
-            set: function (val) { this.data[x] = val; console.log('we settin to:', val); exportData[lastId].updateElements() },
+            set: function (val) { this.data[x] = val; console.log('we settin ' + x + ' to:', val); exportData[lastId].updateElements() },
             get: function (val) { return this.data[x] },
         })
 

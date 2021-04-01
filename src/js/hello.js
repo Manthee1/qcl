@@ -1,17 +1,15 @@
 exportLocal({
     data: {
         a: 1,
-        b: "world",
+        b: "<h5>NO</h5>",
         toggle: false,
-
     },
     send: function () {
-
         if (!this.toggle) {
             this.toggle = true;
-
             this.interval = setInterval(() => {
                 this.a++
+                this.b = `<h5>NO${this.a}</h5>`
             }, 100);
         } else {
             this.toggle = false;
@@ -19,11 +17,3 @@ exportLocal({
         }
     },
 });
-
-    // exportListeners({
-    //     0: {
-    //         id: "asd", type: "click", call: function (event, this) {
-    //             console.log('ok');
-    //         }
-    //     }
-    // });

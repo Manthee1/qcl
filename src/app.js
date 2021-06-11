@@ -15,11 +15,13 @@ const components = {
     _: "./src/components/", //root path to the components directory
 
     list: {
-        h: { src: "h.html" },
         HelloWorld: { src: "HelloWorld.html" },
         GoodbyeWorld: { src: "GoodbyeWorld.html" },
         // HelloWorld - tag name that will be overwritten with the html of the source file
         // HelloWorld.html - is the html file that contains the component html
+
+        // If a a component is not defined but it's html file is the "components" or what ever you put as the source dir. Then it will try and load it (given that  the tag name is lowercase)
+        // h.html works that way! It's not listed here but if it exists in the view than it will be loaded.
     },
 
     styles: {}, // Leave empty
@@ -31,14 +33,21 @@ const components = {
         if (!isDefined(document.querySelector(componentSelector))) {
             return true
         }
-        if (isDefined(this.list[componentName])) {
-            let componentPath = this.list[componentName].src
 
-            console.log("Parsing", componentPath);
-            // Fetch the component
-            let componentData = await fetch(this._ + componentPath)
-            let componentText = await componentData.text()
+        let componentPath = componentName + '.html'
+        if (!isObjectEmpty(this.list[componentName]) && !isTextEmpty(this.list[componentName].src)) componentPath = this.list[componentName].src
+        console.log("Parsing", componentPath);
 
+        let componentData, componentText;
+        // Fetch the component
+        try {// Try catch so that nonexisting components don't throw errors.
+            componentData = await fetch(this._ + componentPath)
+            componentText = await componentData.text()
+        } catch (e) {
+            componentData = { ok: false }
+        }
+
+        if (componentData.ok == true) {
             // For every same component tag apply the fetched data
             for (const x of document.querySelectorAll(componentSelector)) {
                 x.setAttribute('___parsing', true);
@@ -122,10 +131,23 @@ const components = {
 
     //Run parser for each component
     run: async function () {
+        let componentIndex = {};
+
         for (const component of Object.keys(this.list)) {
-            let componentName = component
-            this.parse(componentName)
+            const componentName = component
+            componentIndex[componentName] = true // Value is useless here so it does not matter what it is assigned as..
         }
+
+        for (const component of document.body.querySelectorAll("*")) {
+            const componentName = component.localName
+            componentIndex[componentName] = true // Value is useless here so it does not matter what it is assigned as..
+        }
+
+        for (const componentName of Object.keys(componentIndex)) {
+            this.parse(componentName);
+        }
+
+
     },
 
 

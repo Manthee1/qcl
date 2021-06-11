@@ -230,6 +230,27 @@ let isDefined = el => {
     else return true;
 }
 
+let isObject = obj => isDefined(obj) && Object.prototype.toString.call(obj) == "[object Object]"
+let isObjectEmpty = obj => {
+    if (isDefined(obj))
+        return Object.entries(obj).length == 0
+    else return true
+}
+
+let isFunction = func => {
+    if (isDefined(func) && typeof func == "function") return true
+    return false
+}
+let isArrayEmpty = arr => {
+    if (isDefined(arr) && typeof arr == "Object")
+        return arr.length == 0
+}
+
+let isTextEmpty = x => {
+    return (x.toString().trim().length == 0);
+}
+
+
 window.onload = async (event) => {
     router.setView(views.startingView)
 }

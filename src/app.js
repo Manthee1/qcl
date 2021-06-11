@@ -1,6 +1,3 @@
-
-
-
 const views = {
     startingView: "Test",
     _: "./src/views/", //root path to the views directory
@@ -27,6 +24,7 @@ const components = {
 
     styles: {}, // Leave empty
     scripts: {},
+    eventListenerList: ["abort", "afterprint", "animationend", "animationiteration", "animationstart", "beforeprint", "beforeunload", "blur", "canplay", "canplaythrough", "change", "click", "contextmenu", "copy", "cut", "dblclick", "drag", "dragend", "dragenter", "dragleave", "dragover", "dragstart", "drop", "durationchange", "ended", "error", "focus", "focusin", "focusout", "fullscreenchange", "fullscreenerror", "hashchange", "input", "invalid", "keydown", "keypress", "keyup", "load", "loadeddata", "loadedmetadata", "loadstart", "message", "mousedown", "mouseenter", "mouseleave", "mousemove", "mouseover", "mouseout", "mouseup", "mousewheel", "offline", "online", "open", "pagehide", "pageshow", "paste", "pause", "play", "playing", "popstate", "progress", "ratechange", "resize", "reset", "scroll", "search", "seeked", "seeking", "select", "show", "stalled", "storage", "submit", "suspend", "timeupdate", "toggle", "touchcancel", "touchend", "touchmove", "touchstart", "transitionend", "unload", "volumechange", "waiting", "wheel",],
 
     parse: async function (componentName) {
         const componentSelector = componentName + ":not([___parsing])";
@@ -66,7 +64,6 @@ const components = {
 
                 // Add the fetched data to the tag
                 x.innerHTML += componentText
-
                 // Run all script tags and remove them
                 document.querySelectorAll("script[local]").forEach(x => {
                     eval(x.innerHTML);
@@ -106,16 +103,19 @@ const components = {
                 await this.import('components')
             }
 
-            for (const x of document.querySelectorAll("*[--click]")) {
-                let clickAction = x.getAttribute('--click');
-                x.removeAttribute('--click');
-                if (isDefined(clickAction)) {
-                    let componentId = x.getAttribute('___component-id')
-                    x.addEventListener("click", e => {
-                        exportData.run(componentId, clickAction);
-                    })
+            //Adds a event listener for every existing listener.
+            this.eventListenerList.forEach(eventListener => {
+                for (const x of document.querySelectorAll(`*[--${eventListener}]`)) {
+                    let clickAction = x.getAttribute(`--${eventListener}`);
+                    x.removeAttribute(`--${eventListener}`);
+                    if (isDefined(clickAction)) {
+                        let componentId = x.getAttribute('___component-id')
+                        x.addEventListener(eventListener, e => {
+                            exportData.run(componentId, clickAction);
+                        })
+                    }
                 }
-            }
+            });
 
         } else throw `There is no entry for ${componentName} in the component list`
     },

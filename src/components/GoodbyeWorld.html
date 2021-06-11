@@ -1,3 +1,15 @@
 <import type='css' src='./src/css/GoodByeWorld.css'></import>
-<p>This is the GoodByeWorld View</p>
+<p --click="this.kk()">{{this.a}}</p>
 <button onclick="router.setView('HelloWorldView')">Change to HelloWorldView</button>
+
+<script local>
+    console.log(123);
+    exportLocal({
+        data: {
+            a: 1,
+        },
+        kk: function () {
+            this.a++;
+        }
+    })
+</script>

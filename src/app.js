@@ -236,8 +236,14 @@ router = {
 
 //Parses a component js export object 
 function exportLocal(obj) {
+    //Verify that obj is an object and is not empty or return;
+    if (!isDefined(obj) || !isObject(obj)) return;
     let lastId = exportData._.slice(-1)
     exportData[lastId].data = obj
+
+    //Also verify that obj.data is an object and is not empty or return;
+    if (!isDefined(obj.data) || !isObject(obj.data)) return;
+
     Object.keys(obj.data).forEach(x => {
         Object.defineProperty(exportData[lastId].data, x, {
             set: function (val) { this.data[x] = val; console.log('we settin ' + x + ' to:', val); exportData[lastId].updateElements() },

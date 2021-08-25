@@ -17,6 +17,6 @@ exportLocal({
         }
     },
     onDeploy: function () {
-        console.log("hello");
+        console.log("hello", this);
     }
 });

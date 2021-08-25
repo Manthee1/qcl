@@ -111,7 +111,7 @@ const components = {
 
                 //Run the code of the onDeploy function from the exportData of the component
                 if (isFunction(exportData[generatedId].data.onDeploy)) {
-                    exportData[generatedId].data.onDeploy();
+                    exportData.run(generatedId, "(" + exportData[generatedId].data.onDeploy.toString() + "())")
                 }
 
                 await this.import('components')

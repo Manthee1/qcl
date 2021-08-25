@@ -123,7 +123,7 @@ const components = {
                     let clickAction = x.getAttribute(`--${eventListener}`);
                     x.removeAttribute(`--${eventListener}`);
                     if (isDefined(clickAction)) {
-                        let componentId = x.getAttribute('___component-id')
+                        let componentId = x.closest('[___component-id]').getAttribute('___component-id')
                         x.addEventListener(eventListener, e => {
                             exportData.run(componentId, clickAction);
                         })

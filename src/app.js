@@ -109,6 +109,11 @@ const components = {
                 //Overwrite the component initializer with the component.
                 x.outerHTML = x.innerHTML;
 
+                //Run the code of the onDeploy function from the exportData of the component
+                if (isFunction(exportData[generatedId].data.onDeploy)) {
+                    exportData[generatedId].data.onDeploy();
+                }
+
                 await this.import('components')
             }
 

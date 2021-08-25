@@ -16,4 +16,7 @@ exportLocal({
             clearInterval(this.interval)
         }
     },
+    onDeploy: function () {
+        console.log("hello");
+    }
 });
